@@ -10,7 +10,7 @@ creds = ServiceAccountCredentials.from_json_keyfile_name("credentials.json", sco
 client = gspread.authorize(creds)
 
 # 📄 Load Existing Sheet
-sheet = client.open("Journal October competition").Log  # Replace with your actual sheet name
+sheet = client.open("Journal October competition").worksheet("Log") # Replace with your actual sheet name
 data = sheet.get_all_records()
 df = pd.DataFrame(data)
 
