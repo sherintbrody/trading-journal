@@ -1,6 +1,4 @@
-dash
+streamlit
 pandas
-plotly
-gunicorn
 gspread
 oauth2client
