@@ -11,7 +11,7 @@ client = gspread.authorize(creds)
 
 # 📄 Load Existing Sheet
 try:
-    sheet = client.open("Journal").worksheet("Log")
+    sheet = client.open("Journal.xlsm").worksheet("Log")
     data = sheet.get_all_records()
     df = pd.DataFrame(data)
 except Exception as e:
