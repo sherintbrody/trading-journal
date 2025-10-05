@@ -1,5 +1,4 @@
-import dash
-from dash import dcc, html, dash_table
+import streamlit as st
 import pandas as pd
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
@@ -10,25 +9,16 @@ creds = ServiceAccountCredentials.from_json_keyfile_name("credentials.json", sco
 client = gspread.authorize(creds)
 
 # 📄 Load Existing Sheet
-sheet = client.open("Journal October competition").worksheet("Log") # Replace with your actual sheet name
-data = sheet.get_all_records()
-df = pd.DataFrame(data)
+try:
+    sheet = client.open("Journal October competition").worksheet("Log")
+    data = sheet.get_all_records()
+    df = pd.DataFrame(data)
+except Exception as e:
+    st.error("❌ Could not load sheet. Check the sheet name and sharing permissions.")
+    st.stop()
 
-# 🧠 Dash App
-app = dash.Dash(__name__)
-server = app.server  # Required for deployment
+# 🧠 Streamlit App
+st.set_page_config(page_title="📘 Trading Journal Viewer", layout="wide")
+st.title("📘 Trading Journal Viewer")
 
-app.layout = html.Div([
-    html.H2("📋 Google Sheet Viewer"),
-    dash_table.DataTable(
-        id="sheet-table",
-        columns=[{"name": i, "id": i} for i in df.columns],
-        data=df.to_dict("records"),
-        style_table={"overflowX": "auto"},
-        style_cell={"textAlign": "center"},
-        page_size=20
-    )
-])
-
-if __name__ == "__main__":
-    app.run_server(debug=True)
+st.dataframe(df, use_container_width=True)
