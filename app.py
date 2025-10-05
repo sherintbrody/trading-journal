@@ -1,35 +1,19 @@
 import dash
 from dash import dcc, html, Input, Output, State, dash_table
 import pandas as pd
-import sqlite3
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
 from datetime import datetime
 
-# 📦 SQLite Setup
-conn = sqlite3.connect("journal.db", check_same_thread=False)
-cursor = conn.cursor()
-cursor.execute("""
-CREATE TABLE IF NOT EXISTS trades (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    open_date TEXT,
-    close_date TEXT,
-    instrument TEXT,
-    lot REAL,
-    direction TEXT,
-    ls_percent REAL,
-    entry REAL,
-    sl REAL,
-    tp REAL,
-    exit_price REAL,
-    rr REAL,
-    result TEXT,
-    remarks TEXT
-)
-""")
-conn.commit()
+# 🔐 Google Sheets Setup
+scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+creds = ServiceAccountCredentials.from_json_keyfile_name("credentials.json", scope)
+client = gspread.authorize(creds)
+sheet = client.open("Trading Journal").sheet1  # Make sure this matches your sheet name
 
 # 🧠 Dash App
 app = dash.Dash(__name__)
-server = app.server  # Required for Render
+server = app.server  # Required for deployment
 
 app.layout = html.Div([
     html.H2("📘 Trading Journal"),
@@ -55,8 +39,8 @@ app.layout = html.Div([
     dash_table.DataTable(
         id="trade-table",
         columns=[{"name": i, "id": i} for i in [
-            "open_date", "close_date", "instrument", "lot", "direction", "ls_percent",
-            "entry", "sl", "tp", "exit_price", "rr", "result", "remarks"
+            "Open Date", "Close Date", "Instrument", "Lot", "Direction", "LS%",
+            "Entry", "SL", "TP", "Exit Price", "Result", "Remarks"
         ]],
         style_table={"overflowX": "auto"},
         style_cell={"textAlign": "center"},
@@ -86,15 +70,14 @@ def save_trade(n, open_date, close_date, instrument, lot, direction, ls_percent,
     if n == 0 or not all([open_date, instrument, entry, sl, tp, exit_price]):
         return "", []
 
-    rr = round(abs(tp - entry) / abs(entry - sl), 2)
-    cursor.execute("""
-        INSERT INTO trades (open_date, close_date, instrument, lot, direction, ls_percent, entry, sl, tp, exit_price, rr, result, remarks)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    """, (open_date, close_date, instrument, lot, direction, ls_percent, entry, sl, tp, exit_price, rr, result, remarks))
-    conn.commit()
+    new_row = [
+        open_date, close_date, instrument, lot, direction, ls_percent,
+        entry, sl, tp, exit_price, result, remarks
+    ]
+    sheet.append_row(new_row)
 
-    df = pd.read_sql("SELECT * FROM trades", conn)
-    return f"✅ Trade added with RR: {rr}", df.to_dict("records")
+    data = sheet.get_all_records()
+    return "✅ Trade added successfully", data
 
 if __name__ == "__main__":
     app.run_server(debug=True)
